@@ -1,0 +1,11 @@
+﻿rider_id,first_name,last_name,driver_license_num,tpsp_name,date_started,hub_assignment
+1,Emilio,Aguinaldo,1001,rider_co,2021-08-23,CAV
+2,Manuel,Quezon,1002,rider_co,2020-05-14,MNL
+3,Jose,Laurel,1003,rider_co,2019-12-24,MNL
+4,Sergio,Osmena,1004,rider_co,2010-01-22,MNL
+5,Manuel,Roxas,1005,vroom_vroom,2023-03-24,CAV
+6,Elpidio,Quirino,1006,vroom_vroom,2022-06-20,CAV
+7,Ramon,Magsaysay,1007,vroom_vroom,2015-07-01,BUL
+8,Carlos,Garcia,1008,vroom_vroom,2016-06-07,BUL
+9,Diosdado,Macapagal,1009,rider_co,2020-11-11,BUL
+10,Ferdinand,Marcos,1010,rider_co,2012-12-12,MNL

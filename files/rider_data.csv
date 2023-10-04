@@ -1,0 +1,232 @@
+[
+  {
+    "rider_id": {
+      "N": "7"
+    },
+    "date_started": {
+      "S": "2015-07-01"
+    },
+    "last_name": {
+      "S": "Magsaysay"
+    },
+    "driver_license_num": {
+      "N": "1007"
+    },
+    "first_name": {
+      "S": "Ramon"
+    },
+    "tpsp_name": {
+      "S": "vroom_vroom"
+    },
+    "hub_assignment": {
+      "S": "BUL"
+    }
+  },
+  {
+    "rider_id": {
+      "N": "8"
+    },
+    "date_started": {
+      "S": "2016-06-07"
+    },
+    "last_name": {
+      "S": "Garcia"
+    },
+    "driver_license_num": {
+      "N": "1008"
+    },
+    "first_name": {
+      "S": "Carlos"
+    },
+    "tpsp_name": {
+      "S": "vroom_vroom"
+    },
+    "hub_assignment": {
+      "S": "BUL"
+    }
+  },
+  {
+    "rider_id": {
+      "N": "10"
+    },
+    "date_started": {
+      "S": "2012-12-12"
+    },
+    "last_name": {
+      "S": "Marcos"
+    },
+    "driver_license_num": {
+      "N": "1010"
+    },
+    "first_name": {
+      "S": "Ferdinand"
+    },
+    "tpsp_name": {
+      "S": "rider_co"
+    },
+    "hub_assignment": {
+      "S": "MNL"
+    }
+  },
+  {
+    "rider_id": {
+      "N": "3"
+    },
+    "date_started": {
+      "S": "2019-12-24"
+    },
+    "last_name": {
+      "S": "Laurel"
+    },
+    "driver_license_num": {
+      "N": "1003"
+    },
+    "first_name": {
+      "S": "Jose"
+    },
+    "tpsp_name": {
+      "S": "rider_co"
+    },
+    "hub_assignment": {
+      "S": "MNL"
+    }
+  },
+  {
+    "rider_id": {
+      "N": "2"
+    },
+    "date_started": {
+      "S": "2020-05-14"
+    },
+    "last_name": {
+      "S": "Quezon"
+    },
+    "driver_license_num": {
+      "N": "1002"
+    },
+    "first_name": {
+      "S": "Manuel"
+    },
+    "tpsp_name": {
+      "S": "rider_co"
+    },
+    "hub_assignment": {
+      "S": "MNL"
+    }
+  },
+  {
+    "rider_id": {
+      "N": "9"
+    },
+    "date_started": {
+      "S": "2020-11-11"
+    },
+    "last_name": {
+      "S": "Macapagal"
+    },
+    "driver_license_num": {
+      "N": "1009"
+    },
+    "first_name": {
+      "S": "Diosdado"
+    },
+    "tpsp_name": {
+      "S": "rider_co"
+    },
+    "hub_assignment": {
+      "S": "BUL"
+    }
+  },
+  {
+    "rider_id": {
+      "N": "4"
+    },
+    "date_started": {
+      "S": "2010-01-22"
+    },
+    "last_name": {
+      "S": "Osmena"
+    },
+    "driver_license_num": {
+      "N": "1004"
+    },
+    "first_name": {
+      "S": "Sergio"
+    },
+    "tpsp_name": {
+      "S": "rider_co"
+    },
+    "hub_assignment": {
+      "S": "MNL"
+    }
+  },
+  {
+    "rider_id": {
+      "N": "6"
+    },
+    "date_started": {
+      "S": "2022-06-20"
+    },
+    "last_name": {
+      "S": "Quirino"
+    },
+    "driver_license_num": {
+      "N": "1006"
+    },
+    "first_name": {
+      "S": "Elpidio"
+    },
+    "tpsp_name": {
+      "S": "vroom_vroom"
+    },
+    "hub_assignment": {
+      "S": "CAV"
+    }
+  },
+  {
+    "rider_id": {
+      "N": "1"
+    },
+    "date_started": {
+      "S": "2021-08-23"
+    },
+    "last_name": {
+      "S": "Aguinaldo"
+    },
+    "driver_license_num": {
+      "N": "1001"
+    },
+    "first_name": {
+      "S": "Emilio"
+    },
+    "tpsp_name": {
+      "S": "rider_co"
+    },
+    "hub_assignment": {
+      "S": "CAV"
+    }
+  },
+  {
+    "rider_id": {
+      "N": "5"
+    },
+    "date_started": {
+      "S": "2023-03-24"
+    },
+    "last_name": {
+      "S": "Roxas"
+    },
+    "driver_license_num": {
+      "N": "1005"
+    },
+    "first_name": {
+      "S": "Manuel"
+    },
+    "tpsp_name": {
+      "S": "vroom_vroom"
+    },
+    "hub_assignment": {
+      "S": "CAV"
+    }
+  }
+]

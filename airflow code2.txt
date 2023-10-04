@@ -1,0 +1,108 @@
+import datetime
+from datetime import datetime as dt
+import pandas as pd
+import boto3
+from io import BytesIO
+from airflow.decorators import dag, task
+from airflow import DAG, Dataset
+from airflow.operators.bash import BashOperator
+from airflow.hooks.base import BaseHook
+import pyarrow
+
+
+@dag(
+    start_date=datetime.datetime(2023, 9, 15)
+)
+
+def rider(): 
+    @task
+    def read_csv_from_s3():
+        s3_bucket = 'project-de-2023-jverdan'
+        s3_key = 'landing/rider_raw_data.csv'
+        
+        aws_credentials = BaseHook.get_connection('project_iam')
+
+        # Create an S3 client
+        s3_client = boto3.client(
+        's3',
+        aws_access_key_id=aws_credentials.login,
+        aws_secret_access_key=aws_credentials.password
+        )
+
+        # Use the S3 client to download the file
+        response = s3_client.get_object(Bucket=s3_bucket, Key=s3_key)
+        csv_content = response['Body'].read()
+
+        # Load CSV data into a Pandas DataFrame
+        df_raw = pd.read_csv(BytesIO(csv_content))
+        return df_raw
+    
+    @task
+    def rider_data(df):
+        aws_credentials = BaseHook.get_connection('project_iam')
+        dynamodb = boto3.resource('dynamodb', 
+                                aws_access_key_id=aws_credentials.login,
+                                aws_secret_access_key=aws_credentials.password)
+        rider = dynamodb.Table('rider_data')
+        rider2 = dynamodb.Table('rider_data2')
+        
+        client = boto3.client('dynamodb', 
+                                aws_access_key_id=aws_credentials.login,
+                                aws_secret_access_key=aws_credentials.password)
+        
+        rider_id = client.execute_statement(
+            Statement = """
+            SELECT rider_id FROM rider_data
+            """
+        )['Items']
+        
+        if len(rider_id) != 0:
+            values = [item['rider_id']['N'] for item in rider_id]
+            riders = [int(value) for value in values]
+        else:
+            riders = []
+        
+        for index, row in df.iterrows():
+            if row['rider_id'] not in riders:
+                rider.put_item(Item={
+                    'rider_id': row['rider_id'],
+                    'first_name': row['first_name'],
+                    'last_name': row['last_name'],
+                    'driver_license_num': row['driver_license_num'],
+                    'tpsp_name': row['tpsp_name'],
+                    'date_started': row['date_started'],
+                    'hub_assignment': row['hub_assignment'],
+                })
+
+                rider2.put_item(Item={
+                    'rider_id': row['rider_id'],
+                    'tpsp_name': row['tpsp_name'],
+                    'date_started': row['date_started'],
+                    'hub_assignment': row['hub_assignment'],
+                })
+                
+    def export_to_s3():
+        aws_credentials = BaseHook.get_connection('project_iam')
+        dynamodb = boto3.client('dynamodb', 
+                                aws_access_key_id=aws_credentials.login,
+                                aws_secret_access_key=aws_credentials.password)
+        
+        s3_client = boto3.client(
+        's3',
+        aws_access_key_id=aws_credentials.login,
+        aws_secret_access_key=aws_credentials.password
+        )
+        
+        s3_bucket_name = 'project-de-2023-jverdan'
+        s3_key = f'sensitive/rider_data.csv'
+
+        data = dynamodb.scan('rider_data')['Items']
+        json_data = json.dumps(data, indent=2)
+
+        # Upload JSON data to S3
+        s3_client.put_object(Bucket=s3_bucket_name, Key=s3_key, Body=json_data)
+    
+    data = read_csv_from_s3()
+    rider_data(data)
+    
+rider()

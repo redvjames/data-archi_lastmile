@@ -1,0 +1,4 @@
+date_id,year,month,day,is_holiday,is_ecommerce_sale
+9102023,2023,9,10,False,False
+9112023,2023,9,11,False,True
+912023,2023,9,1,True,False

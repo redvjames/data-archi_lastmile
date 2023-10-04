@@ -1,0 +1,301 @@
+import datetime
+from datetime import datetime as dt
+import pandas as pd
+import boto3
+from io import BytesIO
+from airflow.decorators import dag, task
+from airflow import DAG, Dataset
+from airflow.operators.bash import BashOperator
+from airflow.hooks.base import BaseHook
+from airflow.providers.postgres.hooks.postgres import PostgresHook
+from airflow.providers.amazon.aws.hooks.redshift_sql import RedshiftSQLHook
+import pyarrow
+
+
+@dag(
+    start_date=datetime.datetime(2023, 9, 15),
+    schedule="@daily"
+)
+
+def package(): 
+    @task
+    def read_csv_from_s3():
+        s3_bucket = 'project-de-2023-jverdan'
+        s3_key = 'landing/raw_data_package.csv'
+        
+        aws_credentials = BaseHook.get_connection('project_iam')
+
+        # Create an S3 client
+        s3_client = boto3.client(
+        's3',
+        aws_access_key_id=aws_credentials.login,
+        aws_secret_access_key=aws_credentials.password
+    )
+
+        # Use the S3 client to download the file
+        response = s3_client.get_object(Bucket=s3_bucket, Key=s3_key)
+        csv_content = response['Body'].read()
+
+        # Load CSV data into a Pandas DataFrame
+        df_raw = pd.read_csv(BytesIO(csv_content))
+        df_work = df_raw.drop_duplicates()
+        
+        s3_key2 = f'work/work.csv'
+        df_work.to_csv(f'/tmp/work.csv', index=False, encoding='utf-8', sep=',')
+        s3_client.upload_file(f'/tmp/work.csv', s3_bucket, s3_key2)
+        
+        return df_raw
+    
+    @task
+    def rds_hub(df):
+        hook = PostgresHook(postgres_conn_id='project_rds')
+        conn = hook.get_conn()
+        cursor = conn.cursor()
+        
+        query = '''SELECT hub_id
+                FROM hub
+                ORDER BY hub_id DESC
+                LIMIT 1;'''
+        try:
+            hub_id = int(cursor.execute(query).fetchone()[0])
+        except:
+            hub_id = 0
+        
+        cursor.execute('SELECT DISTINCT delivery_hub FROM hub')
+        hubs = set(row[0] for row in cursor.fetchall())
+            
+        client_id = 0
+        client = set()
+        recipient_id = 0
+        recipient = set()
+        
+        cursor.execute('DELETE FROM delivery;')
+        cursor.execute('DELETE FROM package;')
+        cursor.execute('DELETE FROM client;')
+        cursor.execute('DELETE FROM recipient;')
+        
+        for index, row in df.iterrows():         
+            if row['delivery_hub'] not in hubs:
+                hub_id += 1
+                cursor.execute(
+                    '''INSERT INTO hub (hub_id, delivery_hub) 
+                    VALUES (%s, %s)
+                    ON CONFLICT (hub_id) DO NOTHING;
+                    ''', (hub_id, row['delivery_hub'])
+                )
+                hubs.add(row['delivery_hub'])
+                
+            if ((row['client_name'], row['client_subgroup_name'], row['payment_method'])) not in client:
+                client_id += 1
+                cursor.execute(
+                    '''INSERT INTO client (client_id, client_name, client_subgroup_name, payment_method, client_industry) 
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON CONFLICT (client_id) DO NOTHING;
+                    ''', (client_id, row['client_name'], row['client_subgroup_name'], row['payment_method'], row['client_industry'])
+                )
+                client.add((row['client_name'], row['client_subgroup_name'], row['payment_method']))
+                
+            if (row['longitude'], row['latitude']) not in recipient:
+                recipient_id += 1
+                cursor.execute(
+                    '''INSERT INTO recipient (recipient_code, delivery_island, province, city, barangay, longitude, latitude) 
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (recipient_code) DO NOTHING;
+                    ''', (recipient_id, row['delivery_island'], row['province'], row['city'], 
+                          row['barangay'], row['longitude'], row['latitude'])
+                )
+                recipient.add((row['longitude'], row['latitude']))
+                
+        conn.commit()
+        cursor.close()
+        
+    @task    
+    def rds_package(df):
+        hook = PostgresHook(postgres_conn_id='project_rds')
+        conn = hook.get_conn()
+        cursor = conn.cursor()
+        
+        tracking = set()
+        for index, row in df.iterrows():
+            query = "SELECT client_id FROM client WHERE client_name = %s AND client_subgroup_name = %s AND payment_method = %s"
+            cursor.execute(query, (row['client_name'], row['client_subgroup_name'], row['payment_method']))
+            client_id = cursor.fetchone()[0]
+            query2 = "SELECT recipient_code FROM recipient WHERE longitude = %s AND latitude = %s"
+            cursor.execute(query2, (row['longitude'], row['latitude']))
+            recipient_id = cursor.fetchone()[0]
+            if row['tracking_number'] not in tracking:
+                cursor.execute(
+                    '''INSERT INTO package (tracking_number, client_code, recipient_code, 
+                    package_type, package_value, collect_amount, weight) 
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (tracking_number) DO NOTHING;
+                    ''', (row['tracking_number'], client_id, recipient_id, row['package_type'], 
+                          row['package_value'], row['collect_amount'], row['weight'])
+                )
+                tracking.add(row['tracking_number'])
+                                     
+        conn.commit()
+        cursor.close()
+    
+    @task
+    def rds_del(df):
+        hook = PostgresHook(postgres_conn_id='project_rds')
+        conn = hook.get_conn()
+        cursor = conn.cursor()
+        
+        del_id = 0
+        df = df.drop_duplicates()
+        for index, row in df.iterrows():
+            del_id += 1
+            query = "SELECT hub_id FROM hub WHERE delivery_hub = %s"
+            cursor.execute(query, (row['delivery_hub'],))
+            hub_id = cursor.fetchone()[0]
+            query2 = "SELECT tracking_number FROM package WHERE tracking_number = %s"
+            cursor.execute(query2, (row['tracking_number'],))
+            track_id = cursor.fetchone()[0]
+            cursor.execute(
+                    '''INSERT INTO delivery (delivery_id, tracking_number, hub_id, status, dispatch_date, delivery_date) 
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ON CONFLICT (delivery_id) DO NOTHING;
+                    ''', (del_id, track_id, hub_id, row['status'], row['dispatch_date'], row['delivery_date'])
+                )
+
+        conn.commit()
+        cursor.close()
+    
+    @task
+    def export_rds():
+        postgres_hook = PostgresHook(postgres_conn_id='project_rds') 
+        s3_bucket = 'project-de-2023-jverdan'
+        aws_credentials = BaseHook.get_connection('project_iam')
+        
+        s3_client = boto3.client(
+        's3',
+        aws_access_key_id=aws_credentials.login,
+        aws_secret_access_key=aws_credentials.password
+        )
+        
+        for i in ['hub', 'client', 'recipient', 'package', 'delivery']:
+            sql_query = f"SELECT * FROM {i};"
+            df = postgres_hook.get_pandas_df(sql_query)
+            s3_key = f'gold/oltp_{i}.csv'
+            df.to_csv(f'/tmp/oltp_{i}.csv', index=False, encoding='utf-8', sep=',')
+            s3_client.upload_file(f'/tmp/oltp_{i}.csv', s3_bucket, s3_key)
+                
+    @task
+    def rs_dim(df):
+        hook = RedshiftSQLHook(redshift_conn_id='project-rs')
+        conn = hook.get_conn()
+        cursor = conn.cursor()
+        
+        query = '''SELECT hub_id
+                FROM dim_hub_info
+                ORDER BY hub_id DESC
+                LIMIT 1;'''
+        try:
+            hub_id = int(cursor.execute(query).fetchone()[0])
+        except:
+            hub_id = 0
+        
+        cursor.execute('SELECT DISTINCT delivery_hub FROM dim_hub_info')
+        hubs = set(row[0] for row in cursor.fetchall())
+        
+        cursor.execute('SELECT DISTINCT date_id FROM dim_date')
+        dates = set(row[0] for row in cursor.fetchall())
+ 
+        for index, row in df.iterrows():         
+            if row['delivery_hub'] not in hubs:
+                hub_id += 1
+                cursor.execute(
+                    '''INSERT INTO dim_hub_info (hub_id, delivery_hub) 
+                    VALUES (%s, %s)
+                    ''', (hub_id, row['delivery_hub'])
+                )
+                hubs.add(row['delivery_hub'])
+                
+            date_id = int(row['dispatch_date'].replace('/', ''))
+            if date_id not in dates:
+                date_format = '%m/%d/%Y'  
+                parsed_date = dt.strptime(row['dispatch_date'], date_format)
+
+                # Extract the components
+                month = parsed_date.month
+                day = parsed_date.day
+                year = parsed_date.year
+                
+                holiday_list = ['9/1/2023']
+                sale_list = ['9/11/2023']
+                
+                if row['dispatch_date'] in holiday_list:
+                    is_holiday = True
+                else:
+                    is_holiday = False
+                    
+                if row['dispatch_date'] in sale_list:
+                    is_sale = True
+                else:
+                    is_sale = False
+                    
+                cursor.execute(
+                    '''INSERT INTO dim_date (date_id, year, month, day, is_holiday, is_ecommerce_sale) 
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ''', (date_id, year, month, day, is_holiday, is_sale)
+                )
+                dates.add(date_id)
+                
+
+        conn.commit()
+        cursor.close()
+        
+    @task
+    def rs_fact(df):
+        hook = RedshiftSQLHook(redshift_conn_id='project-rs')
+        conn = hook.get_conn()
+        cursor = conn.cursor()
+        
+        df1 = df.groupby(['delivery_hub', 
+                          'dispatch_date']).agg(tracking_number_count=('tracking_number', 'count'), 
+                                                weight_sum=('weight', 'sum')).reset_index()
+        cursor.execute('DELETE FROM fact_deliveries;')
+        
+        for index, row in df1.iterrows():
+            query1 = 'SELECT hub_id FROM dim_hub_info WHERE delivery_hub = %s;'
+            hub_id = int(cursor.execute(query1, (row['delivery_hub'],)).fetchone()[0])
+            query2 = "SELECT date_id FROM dim_date WHERE date_id = %s;"
+            date = int(row['dispatch_date'].replace('/', ''))
+            date_id = cursor.execute(query2, (date,)).fetchone()[0]
+            
+            cursor.execute(
+                    '''INSERT INTO fact_deliveries (delivery_id, hub_id, date_id, package_count, package_weight) 
+                    VALUES (%s, %s, %s, %s, %s)
+                    ''', (index, hub_id, date_id, row['tracking_number_count'], row['weight_sum'])
+                )
+            
+        conn.commit()
+        cursor.close()
+        
+    @task
+    def export_rs():
+        redshift_hook = RedshiftSQLHook(redshift_conn_id='project-rs') 
+        s3_bucket = 'project-de-2023-jverdan'
+        aws_credentials = BaseHook.get_connection('project_iam')
+        
+        s3_client = boto3.client(
+        's3',
+        aws_access_key_id=aws_credentials.login,
+        aws_secret_access_key=aws_credentials.password
+        )
+        
+        for i in ['dim_hub_info', 'dim_date', 'fact_deliveries']:
+            sql_query = f"SELECT * FROM {i};"
+            df = redshift_hook.get_pandas_df(sql_query)
+            s3_key = f'gold/olap_{i}.csv'
+            df.to_csv(f'/tmp/olap_{i}.csv', index=False, encoding='utf-8', sep=',')
+            s3_client.upload_file(f'/tmp/olap_{i}.csv', s3_bucket, s3_key)
+
+    data = read_csv_from_s3()
+    rds_hub(data) >> rds_package(data) >> rds_del(data) >> export_rds()
+    rs_dim(data) >> rs_fact(data) >> export_rs()
+
+    
+package()

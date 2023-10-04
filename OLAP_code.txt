@@ -1,0 +1,46 @@
+%%sql 
+
+DROP TABLE IF EXISTS dim_hub_info
+
+CREATE TABLE IF NOT EXISTS dim_hub_info (
+    hub_id INTEGER PRIMARY KEY,
+    delivery_hub VARCHAR
+)
+
+DISTSTYLE ALL;
+
+
+
+
+%%sql 
+
+DROP TABLE IF EXISTS dim_date
+
+CREATE TABLE IF NOT EXISTS dim_date (
+    date_id INTEGER PRIMARY KEY,
+    year INTEGER,
+    month INTEGER,
+    day INTEGER,
+    is_holiday BOOL,
+    is_ecommerce_sale BOOL
+)
+
+DISTSTYLE ALL;
+
+
+
+
+%%sql
+
+DROP TABLE IF EXISTS fact_deliveries
+
+CREATE TABLE IF NOT EXISTS fact_deliveries (
+    delivery_id INTEGER PRIMARY KEY,
+    hub_id INTEGER DISTKEY REFERENCES dim_hub_info(hub_id),
+    date_id VARCHAR REFERENCES dim_date(date_id),
+    package_count INTEGER,
+    package_weight INTEGER
+)
+COMPOUND SORTKEY (hub_id, date_id)
+
+

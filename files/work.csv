@@ -1,0 +1,11 @@
+tracking_number,delivery_hub,status,dispatch_date,delivery_date,client_code,client_name,client_subgroup_code,client_subgroup_name,payment_method,client_industry,package_type,package_value,collect_amount,weight,delivery_island,province,city,barangay,longitude,latitude
+1,MNL,SUCCESS,9/10/2023,9/10/2023,18,wzp_store,18-1,wzp_grocery,cod,ecomm,small,123,200,1,NCR,NCR,Manila,Mabait,121.3516,12.3456
+2,MNL,SUCCESS,9/10/2023,9/11/2023,18,wzp_store,18-1,wzp_grocery,cod,ecomm,medium,987,300,5,NCR,NCR,Manila,Masipag,121.6789,12.8429
+3,MNL,FAIL,9/10/2023,9/11/2023,18,wzp_store,18-1,wzp_grocery,cod,ecomm,medium,984,69,5,NCR,NCR,Manila,Mabait,121.4563,12.9637
+4,CAV,SUCCESS,9/11/2023,9/11/2023,18,wzp_store,18-2,wzp_dress,non-cod,ecomm,small,123,0,1,SLUZ,Cavite,Cavite City,Maalalahanin,121.5045,12.1295
+5,CAV,SUCCESS,9/10/2023,9/10/2023,18,wzp_store,18-2,wzp_dress,cod,ecomm,large,7887,78,7,SLUZ,Cavite,Cavite City,Maalalahanin,121.3474,12.0543
+6,BUL,SUCCESS,9/11/2023,9/11/2023,16,wzp_bank,16-1,wzp_debit,non-cod,bank,small,100,0,1,NLUZ,Bulacan,Malolos,Matahimik,121.5604,12.5639
+7,BUL,FAIL,9/10/2023,9/10/2023,16,wzp_bank,16-1,wzp_debit,non-cod,bank,small,1000,0,1,NLUZ,Bulacan,Malolos,Matahimik,121.5697,12.6394
+8,CAV,FAIL,9/10/2023,9/11/2023,16,wzp_bank,16-1,wzp_debit,non-cod,bank,small,1000,0,1,SLUZ,Cavite,Cavite City,Maalalahanin,121.2323,12.9583
+9,MNL,FAIL,9/1/2023,9/12/2023,16,wzp_bank,16-1,wzp_debit,non-cod,bank,medium,5000,0,2,NCR,NCR,Quezon City,Masipag,121.4578,12.9067
+10,MNL,SUCCESS,9/10/2023,9/10/2023,18,wzp_store,18-2,wzp_dress,cod,ecomm,large,65,123,7,NCR,NCR,Quezon City,Mabait,121.2323,12.8728
